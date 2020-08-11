@@ -1,5 +1,5 @@
-# machine-learning
-Machine learning projects
+# Machine learning recommendation system
+Machine learning project
 
 ## Recommendation System: Data Science Codenation Final Challenge
 

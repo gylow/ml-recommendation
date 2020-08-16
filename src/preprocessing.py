@@ -1,5 +1,6 @@
 import pandas as pd
 import category_encoders as ce
+from loguru import logger
 from sklearn.decomposition import PCA
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.feature_selection import RFE
@@ -8,17 +9,17 @@ from sklearn.linear_model import LinearRegression
 
 
 class Preprocessing:
-    def __init__(self, data, manual_feat=None, auto_feat=(0,100), rfe=None, pca=None ):
-        self.features_categoric = None
-        self.features_numeric = None
-        self.scaler = None
-        self.catb = None
-        self.data = data
-        self.rfe = rfe
-        self.pca = pca
-        self.manual_feat = manual_feat
-        self.missing_values_acceptable = auto_feat[0]
-        self.unique_values_acceptable = auto_feat[1]
+    def __init__(self, data, manual_feat=None, max_missing=0.0, max_unique=100, rfe = None, pca = None):
+        self.features_categoric=None
+        self.features_numeric=None
+        self.scaler=None
+        self.catb=None
+        self.data=data
+        self.rfe=rfe
+        self.pca=pca
+        self.manual_feat=manual_feat
+        self.max_missing=max_missing
+        self.max_unique=max_unique
         '''
         Class for preprocessing data model.
         :param data: DataSource object
@@ -29,8 +30,8 @@ class Preprocessing:
                                         fillna : Int or Float,
                                         encode : Bool,
                                         drop_first : Bool
-        :param auto_feat: List with [0] is Int with minimum missing values acceptable percentage and
-                                    [1] is Int with maximum unique values acceptable percentage
+        :param max_missing: Float with maximum missing values acceptable percentage
+        :param max_unique: Float with maximum unique values acceptable percentage
         :return: Preprocessed object
         '''
 
@@ -46,7 +47,7 @@ class Preprocessing:
         Get target name from data source
         :return: String target name
         '''
-        return self.data.name_target    
+        return self.data.name_target
 
     def _preprocess_manual(self, df):
         '''
@@ -54,33 +55,33 @@ class Preprocessing:
         :param df: Dataframe
         :return: Dataframe processed, List[String] with numeric features, List[String] with categoric features
         '''
-        name, var_type, fill, encode, drop_first = 0, 1, 2, 3, 4
-        features_numeric = list()
-        features_categoric = list()
+        name, var_type, fill, encode, drop_first=0, 1, 2, 3, 4
+        features_numeric=list()
+        features_categoric=list()
 
         for col in self.manual_feat:
             if col[var_type]:
-                feature = features_categoric if col[var_type] == 'cat' else features_numeric
+                feature=features_categoric if col[var_type] == 'cat' else features_numeric
                 print(f'use: {col[name]}')
                 if col[fill] != None:
-                    df[col[name]].fillna(col[fill], inplace=True)
+                    df[col[name]].fillna(col[fill], inplace = True)
                     print(f'\tfill na with: {col[fill]}')
                 if col[encode]:
-                    values = df[col[name]].value_counts(
+                    values=df[col[name]].value_counts(
                     ).sort_index().index.values
-                    df = pd.get_dummies(df,
-                                        columns=[col[name]],
-                                        drop_first=col[drop_first],
-                                        dtype='int')
+                    df=pd.get_dummies(df,
+                                        columns = [col[name]],
+                                        drop_first = col[drop_first],
+                                        dtype = 'int')
                     print(f'\tencode: {values}')
                     if col[drop_first]:
                         print(f'\tdrop value: {values[0]}')
-                        values = values[1:]
+                        values=values[1:]
                     feature += [f'{col[name]}_{x}' for x in values]
                 else:
                     feature.append(col[name])
             else:
-                df.drop(columns=col[name], inplace=True)
+                df.drop(columns = col[name], inplace = True)
                 print(f'drop: {col[name]}')
         return df, features_numeric, features_categoric
 
@@ -92,35 +93,35 @@ class Preprocessing:
         :param unique_values_acceptable: Int with maximum unique values acceptable percentage
         :return: List[String] with numeric features, List[String] with categoric features
         '''
-        print('ALERT: Creating DataFrame for Data Manipulation')
+
+        features_categoric=df.select_dtypes(
+            exclude = 'number').columns.to_list()
+        features_numeric = df.select_dtypes(include = 'number').columns.to_list()
+
+        logger.info('Creating DataFrame for Data Manipulation')
         percentage = 100/df.shape[0]
         df_meta = pd.DataFrame({'column': df.columns,
                                 'missing_perc': df.isna().sum() * percentage,
+                                'uniques': [df[x].value_counts().count() for x in df.columns],
                                 'unique_perc': df.nunique() * percentage,
                                 'dtype': df.dtypes})
-        print(df_meta[['missing_perc', 'unique_perc', 'dtype']].round(2))
+        print(df_meta[['missing_perc', 'uniques',
+              'unique_perc', 'dtype']].round(3).to_string())
 
-        print(
-            f'ALERT: Droping columns with missing values > {self.missing_values_acceptable}% :')
-        print(df_meta[df_meta['missing_perc'] >
-                      self.missing_values_acceptable]['missing_perc'])
-        df_meta = df_meta[df_meta['missing_perc'] <= self.missing_values_acceptable]
+        logger.info(f'Droping columns with unique values >= {self.max_unique}% :')
+        logger.info(f'Droping columns with missing values > {self.max_missing}% :')
+        to_del = df_meta[(df_meta['missing_perc'] > self.max_missing) | (
+            df_meta['unique_perc'] >= self.max_unique)].column
+        logger.info(f'Columns: {to_del}% :')
+        for x in to_del:
+            logger.info(x)
+            if x in features_categoric:
+                features_categoric.remove(x)
+            else: 
+                features_numeric.remove(x)
 
-        print(
-            f'ALERT: Droping columns with unique values >= {self.unique_values_acceptable}% :')
-        print(df_meta[df_meta['unique_perc'] >=
-                      self.unique_values_acceptable]['unique_perc'])
-        df_meta = df_meta[df_meta['unique_perc'] < self.unique_values_acceptable]
-
-        #print('ALERT: Creating list with numeric features:')
-        features_numeric = list(df_meta[(df_meta['dtype'] == 'int64') | (
-            df_meta['dtype'] == 'float')]['column'])
         if self.data.name_target in features_numeric:
             features_numeric.remove(self.data.name_target)
-
-        #print('ALERT: Creating list with categoric features:')
-        features_categoric = list(
-            df_meta[(df_meta['dtype'] == 'object')]['column'])
         if self.data.name_target in features_categoric:
             features_categoric.remove(self.data.name_target)
 
@@ -143,7 +144,7 @@ class Preprocessing:
         if self.pca:
             pca = PCA(self.pca).fit(df[feat_num+feat_cat])
             n_components = pca.n_components_
-            print(f"ALERT: Numero de componentes selecionados PCA é {n_components}")
+            logger.info(f"Numero de componentes selecionados PCA é {n_components}")
         else:
             n_components = int(len(feat_num+feat_cat)/2)
 
@@ -174,17 +175,17 @@ class Preprocessing:
         '''
         # TODO implementar testes automatizados para garantir que os dados de x e y continuam correspondentes
 
-        print('Setting Y as target and Removing target from train dataframe')
-        y = df[self.data.name_target].fillna(0)
-        df = df.drop(columns={self.data.name_target})
+        logger.info('Setting Y as target and Removing target from train dataframe')
+        y = df[self.get_name_target()].fillna(0)
+        df = df.drop(columns={self.get_name_target()})
 
         if self.rfe:
-            print('ALERT: Select features')
+            logger.info('Select features')
             self._select_features(df.copy(), y, feat_num, feat_cat)
-            print(f'Numeric Feature Selected >>>> {feat_num}')
-            print(f'Categoric Feature Selected >>>> {feat_cat}')
+            logger.info(f'Numeric Feature Selected >>>> {feat_num}')
+            logger.info(f'Categoric Feature Selected >>>> {feat_cat}')
 
-        print('Feature fit and transform in train dataframe')
+        logger.info('Feature fit and transform in train dataframe')
         self.scaler = StandardScaler()
         self.catb = ce.CatBoostEncoder(cols=feat_cat)
 
@@ -216,22 +217,21 @@ class Preprocessing:
         :param etapa_treino: Boolean
         :return: processed Pandas Data Frame, and target if train stage
         '''
+        if not self.get_name_target :
+            logger.error('Target name not defined')
         df = self.data.read_data(is_train_stage)
+
 
         if self.manual_feat:
             df, feat_num, feat_cat = self._preprocess_manual(df)
         else:
             feat_num, feat_cat = self._preprocess_auto(df)
 
-        # TODO deletar quando o PCA estiver funcionando
-        #if 'TP_ESCOLA_4' in feat_cat:
-        #    feat_cat.remove('TP_ESCOLA_4')
-
         if is_train_stage:
-            print(f'ALERT: Numeric Feature >>>> {feat_num}')
-            print(f'ALERT: Categoric Feature >>>> {feat_cat}')
+            logger.info(f'Numeric Feature >>>> {feat_num}')
+            logger.info(f'Categoric Feature >>>> {feat_cat}')
             return self._process_train(df, feat_num, feat_cat)
         else:
-            print(f'ALERT: Numeric Feature >>>> {self.features_numeric}')
-            print(f'ALERT: Categoric Feature >>>> {self.features_categoric}')
+            logger.info(f'Numeric Feature >>>> {self.features_numeric}')
+            logger.info(f'Categoric Feature >>>> {self.features_categoric}')
             return self._process_test(df)

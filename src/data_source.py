@@ -43,7 +43,6 @@ class DataSource:
         '''
         df_train = pd.read_csv(path_original, index_col=self.name_id)
         logger.success('Dataframe read')
-        logger.info(f'Train shape: {df_train.shape}')
 
         df_train.to_csv(self.path_train)
         logger.success('Writing train dataframe')
@@ -59,11 +58,14 @@ class DataSource:
         logger.info('Reading train dataframe')
         df_train = self.read_data()
         logger.info('Setting target column')
-        df_train[self.name_target] = [1 if x in serie_index.to_numpy() else 0 for x in df_train.index]
-        logger.info('Writing train dataframe with targetn')
+        df_train[self.name_target] = [
+            1 if x in serie_index.to_numpy() else 0 for x in df_train.index]
+        logger.info('Writing train dataframe with target column')
         df_train.to_csv(self.path_train)
-        logger.success('Target dataframe was written')
-
+        logger.info('Writing teste dataframe without index rows')
+        df_train.drop(index=serie_index, columns=self.name_target).to_csv(
+            self.path_test)
+        logger.success('Dataframes was written')
 
     def set_train_columns_from_test(self):
         '''
@@ -103,9 +105,10 @@ class DataSource:
             :return: pd.DataFrame with values and pd.Series with labels
         '''
         df = pd.read_csv(
-            self.path_train if is_train_stage else self.path_test, 
+            self.path_train if is_train_stage else self.path_test,
             index_col=self.name_id).convert_dtypes()
 
+        # The removed data can be recovered by the get_removed_rows()
         if self.rows_remove and not original:
             for label, x in self.rows_remove:
                 df = df[df[label] != x]

@@ -9,17 +9,17 @@ from sklearn.linear_model import LinearRegression
 
 
 class Preprocessing:
-    def __init__(self, data, manual_feat=None, max_missing=0.0, max_unique=100, rfe = None, pca = None):
-        self.features_categoric=None
-        self.features_numeric=None
-        self.scaler=None
-        self.catb=None
-        self.data=data
-        self.rfe=rfe
-        self.pca=pca
-        self.manual_feat=manual_feat
-        self.max_missing=max_missing
-        self.max_unique=max_unique
+    def __init__(self, data, manual_feat=None, max_missing=0.0, max_unique=100, rfe=None, pca=None):
+        self.features_categoric = None
+        self.features_numeric = None
+        self.scaler = None
+        self.catb = None
+        self.data = data
+        self.rfe = rfe
+        self.pca = pca
+        self.manual_feat = manual_feat
+        self.max_missing = max_missing
+        self.max_unique = max_unique
         '''
         Class for preprocessing data model.
         :param data: DataSource object
@@ -55,33 +55,33 @@ class Preprocessing:
         :param df: Dataframe
         :return: Dataframe processed, List[String] with numeric features, List[String] with categoric features
         '''
-        name, var_type, fill, encode, drop_first=0, 1, 2, 3, 4
-        features_numeric=list()
-        features_categoric=list()
+        name, var_type, fill, encode, drop_first = 0, 1, 2, 3, 4
+        features_numeric = list()
+        features_categoric = list()
 
         for col in self.manual_feat:
             if col[var_type]:
-                feature=features_categoric if col[var_type] == 'cat' else features_numeric
+                feature = features_categoric if col[var_type] == 'cat' else features_numeric
                 print(f'use: {col[name]}')
                 if col[fill] != None:
-                    df[col[name]].fillna(col[fill], inplace = True)
+                    df[col[name]].fillna(col[fill], inplace=True)
                     print(f'\tfill na with: {col[fill]}')
                 if col[encode]:
-                    values=df[col[name]].value_counts(
+                    values = df[col[name]].value_counts(
                     ).sort_index().index.values
-                    df=pd.get_dummies(df,
-                                        columns = [col[name]],
-                                        drop_first = col[drop_first],
-                                        dtype = 'int')
+                    df = pd.get_dummies(df,
+                                        columns=[col[name]],
+                                        drop_first=col[drop_first],
+                                        dtype='int')
                     print(f'\tencode: {values}')
                     if col[drop_first]:
                         print(f'\tdrop value: {values[0]}')
-                        values=values[1:]
+                        values = values[1:]
                     feature += [f'{col[name]}_{x}' for x in values]
                 else:
                     feature.append(col[name])
             else:
-                df.drop(columns = col[name], inplace = True)
+                df.drop(columns=col[name], inplace=True)
                 print(f'drop: {col[name]}')
         return df, features_numeric, features_categoric
 
@@ -94,9 +94,9 @@ class Preprocessing:
         :return: List[String] with numeric features, List[String] with categoric features
         '''
 
-        features_categoric=df.select_dtypes(
-            exclude = 'number').columns.to_list()
-        features_numeric = df.select_dtypes(include = 'number').columns.to_list()
+        features_categoric = df.select_dtypes(
+            exclude='number').columns.to_list()
+        features_numeric = df.select_dtypes(include='number').columns.to_list()
 
         logger.info('Creating DataFrame for Data Manipulation')
         percentage = 100/df.shape[0]
@@ -105,19 +105,19 @@ class Preprocessing:
                                 'uniques': [df[x].value_counts().count() for x in df.columns],
                                 'unique_perc': df.nunique() * percentage,
                                 'dtype': df.dtypes})
-        print(df_meta[['missing_perc', 'uniques',
-              'unique_perc', 'dtype']].round(3).to_string())
+        logger.info('\n'+ df_meta[['missing_perc', 'uniques',
+                       'unique_perc', 'dtype']].round(3).to_string())
 
-        logger.info(f'Droping columns with unique values >= {self.max_unique}% :')
-        logger.info(f'Droping columns with missing values > {self.max_missing}% :')
+        logger.info(
+            f'Droping columns with unique values >= {self.max_unique}% :')
+        logger.info(
+            f'Droping columns with missing values > {self.max_missing}% :')
         to_del = df_meta[(df_meta['missing_perc'] > self.max_missing) | (
             df_meta['unique_perc'] >= self.max_unique)].column
-        logger.info(f'Columns: {to_del}% :')
         for x in to_del:
-            logger.info(x)
             if x in features_categoric:
                 features_categoric.remove(x)
-            else: 
+            else:
                 features_numeric.remove(x)
 
         if self.data.name_target in features_numeric:
@@ -136,7 +136,7 @@ class Preprocessing:
         :param feat_cat: List[String] with unselected categoric features
         :return: List[String] with selected numeric features, List[String] with selected categoric features
         '''
-        
+
         df[feat_num] = StandardScaler().fit_transform(df[feat_num])
         df[feat_cat] = ce.CatBoostEncoder(cols=feat_cat).fit_transform(
             df[feat_cat], y=y)
@@ -144,7 +144,8 @@ class Preprocessing:
         if self.pca:
             pca = PCA(self.pca).fit(df[feat_num+feat_cat])
             n_components = pca.n_components_
-            logger.info(f"Numero de componentes selecionados PCA é {n_components}")
+            logger.info(
+                f"Numero de componentes selecionados PCA é {n_components}")
         else:
             n_components = int(len(feat_num+feat_cat)/2)
 
@@ -153,8 +154,8 @@ class Preprocessing:
         selection = RFE(model, n_features_to_select=n_components)
         selection.fit(df[feat_num+feat_cat], y=y)
         feat_selected = df[feat_num +
-                      feat_cat].columns[selection.get_support()]
-        
+                           feat_cat].columns[selection.get_support()]
+
         for feat in feat_num:
             if feat not in feat_selected:
                 feat_num.remove(feat)
@@ -175,7 +176,8 @@ class Preprocessing:
         '''
         # TODO implementar testes automatizados para garantir que os dados de x e y continuam correspondentes
 
-        logger.info('Setting Y as target and Removing target from train dataframe')
+        logger.info(
+            'Setting Y as target and Removing target from train dataframe')
         y = df[self.get_name_target()].fillna(0)
         df = df.drop(columns={self.get_name_target()})
 
@@ -217,10 +219,9 @@ class Preprocessing:
         :param etapa_treino: Boolean
         :return: processed Pandas Data Frame, and target if train stage
         '''
-        if not self.get_name_target :
+        if not self.get_name_target:
             logger.error('Target name not defined')
         df = self.data.read_data(is_train_stage)
-
 
         if self.manual_feat:
             df, feat_num, feat_cat = self._preprocess_manual(df)

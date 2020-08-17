@@ -1,13 +1,16 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, Lasso
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVR
 from catboost import CatBoostRegressor
-#from preprocessing import Preprocessing
-#from data_source import DataSource
 from metrics import Metrics
+from loguru import logger
+#from sklearn.linear_model import RidgeCV
+#from sklearn.linear_model import LassoCV
+#from sklearn.model_selection import GridSearchCV
 
 
 class Experiments:
@@ -21,7 +24,9 @@ class Experiments:
                                       'catboost': CatBoostRegressor()}
         self.classification_algorithms = {'decision_tree': DecisionTreeRegressor(),
                                           'random_forest': RandomForestRegressor(),
-                                          'catboost': CatBoostRegressor()}
+                                          'catboost': CatBoostRegressor(),
+                                          'kNN': KNeighborsClassifier(),
+                                          'logistic_regression': LogisticRegression()}
         self.dict_of_models = None
         self.regression = regression
         '''
@@ -51,10 +56,13 @@ class Experiments:
         algorithms = self.regression_algorithms if self.regression else self.classification_algorithms
 
         for alg in algorithms.keys():
-            print('ALERT: Treinando o modelo ', alg)
+            logger.info(f'Treinando o modelo {alg}')
             test = algorithms[alg]
 
-            print(f"ALERT: {test}")
+            logger.info(test)
+            # TODO check why catboostencoder is not working for variables of type pd.StringDtype () and pd.BooleanDtype ()
+            logger.info(x_train.info())
+            logger.info(y_train.info())
             test.fit(x_train, y_train)
             
             if self.dict_of_models is None:

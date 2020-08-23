@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression, LogisticRegression, Ridge, Lasso
 from sklearn.tree import DecisionTreeRegressor
@@ -11,22 +12,25 @@ from loguru import logger
 #from sklearn.linear_model import RidgeCV
 #from sklearn.linear_model import LassoCV
 #from sklearn.model_selection import GridSearchCV
+#from RandomForestClassifier
+#from sklearn.neighbors import NearestNeighbors
 
 
 class Experiments:
     def __init__(self, regression=True):
-        self.regression_algorithms = {'linear': LinearRegression(),
-                                      'ridge': Ridge(),
-                                      'lasso': Lasso(),
-                                      'decision_tree': DecisionTreeRegressor(),
-                                      'random_forest': RandomForestRegressor(),
-                                      'svm': SVR(),
-                                      'catboost': CatBoostRegressor()}
-        self.classification_algorithms = {'decision_tree': DecisionTreeRegressor(),
-                                          'random_forest': RandomForestRegressor(),
-                                          'catboost': CatBoostRegressor(),
-                                          'kNN': KNeighborsClassifier(),
-                                          'logistic_regression': LogisticRegression()}
+        self.regression_algorithms = {'LinearRegression': LinearRegression(),
+                                      'Ridge': Ridge(),
+                                      'Lasso': Lasso(),
+                                      'DecisionTreeRegressor': DecisionTreeRegressor(),
+                                      'RandomForestRegressor': RandomForestRegressor(),
+                                      'SVR': SVR(),
+                                      'CatBoostRegressor': CatBoostRegressor()
+                                      }
+        self.classification_algorithms = {'DecisionTreeRegressor': DecisionTreeRegressor(),
+                                          'RandomForestRegressor': RandomForestRegressor(),
+                                          'CatBoostRegressor': CatBoostRegressor(),
+                                          'KNeighborsClassifier': KNeighborsClassifier(),
+                                          'LogisticRegression': LogisticRegression()}
         self.dict_of_models = None
         self.regression = regression
         '''
@@ -56,13 +60,10 @@ class Experiments:
         algorithms = self.regression_algorithms if self.regression else self.classification_algorithms
 
         for alg in algorithms.keys():
-            logger.info(f'Treinando o modelo {alg}')
             test = algorithms[alg]
 
             logger.info(test)
-            # TODO check why catboostencoder is not working for variables of type pd.StringDtype () and pd.BooleanDtype ()
-            logger.info(x_train.info())
-            logger.info(y_train.info())
+ 
             test.fit(x_train, y_train)
             
             if self.dict_of_models is None:
@@ -86,16 +87,17 @@ class Experiments:
         
         df_metrics = pd.DataFrame()
 
-        print('Running Metrics')
+        logger.info("Running Metrics")
         for model in models.keys():
-            print(f'ALERT: Predizendo os testes de {model}')
+            logger.info(f"Predizendo os testes de {model}")
             y_pred = models[model].predict(x_test)
-            print(f'ALERT: y : {y_pred}')
+
+            logger.info(f"y : {np.sort(y_pred)[-10:].round(2)}")
 
             metrics = Metrics().calculate_regression(y_test, pd.Series(y_pred))            
             df_metrics = df_metrics.append(pd.Series(metrics, name=model))
 
             pd.DataFrame.from_dict(metrics, orient='index').to_csv(
-                '../output/'+model+'.csv')
+                '../out/'+model+'.csv')
 
         return df_metrics

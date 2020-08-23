@@ -1,5 +1,5 @@
 import pandas as pd
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_squared_error, median_absolute_error, r2_score
 
 
 class Metrics:
@@ -13,8 +13,8 @@ class Metrics:
         :param y_pred: Numpy.ndarray or Pandas.Series
         :return: Dict with metrics
         '''
-        mean_abs_err = mean_absolute_error(y_true, y_pred)
+        median_abs_err = median_absolute_error(y_true, y_pred)
         mean_sqr_err = mean_squared_error(y_true, y_pred)
         r_2_score = r2_score(y_true, y_pred)
-        return {'mean_abs_err' : mean_abs_err, 'mean_sqr_err' : mean_sqr_err, 'r_2_score' : r_2_score}
+        return {'median_abs_err' : median_abs_err, 'mean_sqr_err' : mean_sqr_err, 'r_2_score' : r_2_score}
     

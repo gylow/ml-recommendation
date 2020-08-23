@@ -9,7 +9,7 @@ from sklearn.linear_model import LinearRegression
 
 
 class Preprocessing:
-    def __init__(self, data, manual_feat=None, max_missing=0.0, max_unique=100, rfe=None, pca=None):
+    def __init__(self, data, manual_feat=None, max_missing=0.0, max_variance=100, rfe=None, pca=None):
         self.features_categoric = None
         self.features_numeric = None
         self.scaler = None
@@ -19,7 +19,7 @@ class Preprocessing:
         self.pca = pca
         self.manual_feat = manual_feat
         self.max_missing = max_missing
-        self.max_unique = max_unique
+        self.max_variance = max_variance
         '''
         Class for preprocessing data model.
         :param data: DataSource object
@@ -31,7 +31,7 @@ class Preprocessing:
                                         encode : Bool,
                                         drop_first : Bool
         :param max_missing: Float with maximum missing values acceptable percentage
-        :param max_unique: Float with maximum unique values acceptable percentage
+        :param max_variance: Float with maximum (not include) variance values acceptable percentage
         :return: Preprocessed object
         '''
 
@@ -62,10 +62,10 @@ class Preprocessing:
         for col in self.manual_feat:
             if col[var_type]:
                 feature = features_categoric if col[var_type] == 'cat' else features_numeric
-                print(f'use: {col[name]}')
+                logger.info(f"use: {col[name]}")
                 if col[fill] != None:
                     df[col[name]].fillna(col[fill], inplace=True)
-                    print(f'\tfill na with: {col[fill]}')
+                    logger.info(f'\tfill na with: {col[fill]}')
                 if col[encode]:
                     values = df[col[name]].value_counts(
                     ).sort_index().index.values
@@ -89,8 +89,6 @@ class Preprocessing:
         '''
         Automatically preprocess dataframe setting categoric and numeric features
         :param df: Dataframe
-        :param missing_values_acceptable: Int with minimum missing values acceptable percentage
-        :param unique_values_acceptable: Int with maximum unique values acceptable percentage
         :return: List[String] with numeric features, List[String] with categoric features
         '''
 
@@ -102,18 +100,27 @@ class Preprocessing:
         percentage = 100/df.shape[0]
         df_meta = pd.DataFrame({'column': df.columns,
                                 'missing_perc': df.isna().sum() * percentage,
-                                'uniques': [df[x].value_counts().count() for x in df.columns],
-                                'unique_perc': df.nunique() * percentage,
+                                'n_uniques': [df[x].value_counts(sort=False).count() for x in df.columns],
+                                'variance_perc': df.nunique() * percentage,
                                 'dtype': df.dtypes})
-        logger.info('\n'+ df_meta[['missing_perc', 'uniques',
-                       'unique_perc', 'dtype']].round(3).to_string())
 
         logger.info(
-            f'Droping columns with unique values >= {self.max_unique}% :')
+            f"\n {df_meta[['missing_perc', 'n_uniques', 'variance_perc', 'dtype']].round(3).to_string()}")
+
         logger.info(
-            f'Droping columns with missing values > {self.max_missing}% :')
+            f"Dropping columns with variance >= {self.max_variance} % : \n\
+                {df_meta[df_meta['variance_perc'] > self.max_variance].column.to_list()}")
+
+        logger.info(
+            f"Dropping columns with missing > {self.max_missing} % : \
+                {df_meta[df_meta['missing_perc'] > self.max_missing].column.to_list()}")
+
+        logger.info(
+            f"Dropping unique value columns: {df_meta[df_meta['n_uniques'] == 1].column.to_list()}")
+
         to_del = df_meta[(df_meta['missing_perc'] > self.max_missing) | (
-            df_meta['unique_perc'] >= self.max_unique)].column
+            df_meta['variance_perc'] >= self.max_variance) | (
+                df_meta['n_uniques'] == 1)].column
         for x in to_del:
             if x in features_categoric:
                 features_categoric.remove(x)
@@ -177,8 +184,8 @@ class Preprocessing:
         # TODO implementar testes automatizados para garantir que os dados de x e y continuam correspondentes
 
         logger.info(
-            'Setting Y as target and Removing target from train dataframe')
-        y = df[self.get_name_target()].fillna(0)
+            'Setting Y as target and removing target from train dataframe')
+        y = df[self.get_name_target()].fillna(0).astype(float)
         df = df.drop(columns={self.get_name_target()})
 
         if self.rfe:

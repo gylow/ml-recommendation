@@ -36,12 +36,14 @@ class ModelTraining:
         logger.info(f"Metrics: \n{df_metrics}")
         df_metrics.to_csv("../out/metrics.csv")
 
-        if self.regression:
-            alg_better = df_metrics[df_metrics.median_abs_err ==
-                                    df_metrics.median_abs_err.min()].index[0]
+        if True:  # TODO fix this metrics
+            alg_better = df_metrics.nsmallest(
+                1, "mean_sqr_err").index[0]
+        elif self.regression:
+            alg_better = df_metrics.nsmallest(
+                1, ["median_abs_err", "mean_sqr_err"]).index[0]
         else:
-            alg_better = df_metrics[df_metrics.r_2_score ==
-                                    df_metrics.r_2_score.max()].index[0]
+            alg_better = df_metrics.nlargest(1, "r_2_score").index[0]
         logger.info(f"chosen algorithm: {alg_better}")
 
         model_obj = exp.get_model(alg_better)
@@ -50,7 +52,6 @@ class ModelTraining:
                  'preprocessing': self.pre,
                  'colunas': self.pre.get_name_features()}
 
-        # print(model)
         dump(model, '../out/model.pkl')
 
         return model

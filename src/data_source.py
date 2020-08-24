@@ -140,9 +140,7 @@ class DataSource:
             :param name_columns: List with columns names
             :return: pd.DataFrame with especificated columns
         '''
-        if name_columns is None:
-            name_columns = self.name_id
-        return self.read_data(is_train_stage)[name_columns]
-
-    # TODO definir função para separar os dados de treino dos dados de teste Y
-    #y = pd.read_csv(self.path_label)
+        if name_columns:
+            return self.read_data(is_train_stage)[name_columns]
+        else:
+            return self.read_data(is_train_stage).index

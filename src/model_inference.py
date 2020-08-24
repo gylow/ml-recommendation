@@ -23,17 +23,17 @@ class ModelInference:
         :return: pd.Series with predicted values.
         '''
 
-        logger.trace('Preprocessing Data')
+        logger.info('Preprocessing Data')
         X_test = self.modelo['preprocessing'].process(is_train_stage=False)
 
         # Redundante, modelo não funciona com NA
         # print(f'Quantidade de NA: {X_test.isna().sum()}')
 
-        logger.trace('Predicting')
+        logger.info('Predicting')
         # TODO verificar mudanças no contexto dos dados de produção
         y_pred = self.modelo['model_obj'].predict(X_test)
 
-        logger.trace('Saving Files')
+        logger.info('Saving Files')
         pd.DataFrame(y_pred).to_csv(self.modelo['preprocessing'].data.path_predict)
 
         return y_pred

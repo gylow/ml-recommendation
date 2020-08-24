@@ -23,8 +23,8 @@ class Experiments:
                                       'Lasso': Lasso(),
                                       'DecisionTreeRegressor': DecisionTreeRegressor(),
                                       'RandomForestRegressor': RandomForestRegressor(),
-                                      'SVR': SVR(),
-                                      'CatBoostRegressor': CatBoostRegressor()
+                                      'SVR': SVR()
+                                      #,'CatBoostRegressor': CatBoostRegressor()
                                       }
         self.classification_algorithms = {'DecisionTreeRegressor': DecisionTreeRegressor(),
                                           'RandomForestRegressor': RandomForestRegressor(),

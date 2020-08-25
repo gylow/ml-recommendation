@@ -33,29 +33,33 @@ class Visualization:
         plt.savefig(plot2, '../data/' + nome + 'scatterplot.csv')
         plt.show()
 
-    def feature_analise(self, name_feat, name_target=None):
+    def feature_analise(self, name_feat, name_target=None, y=None):
         '''
         Unique feature visual analise 
         :param name_feat: String with column name to analise
         :param name_target: String with target column name
+        :param y: Series with target values
         '''
 
-        if not self.df[name_feat].dtype == pd.StringDtype():
+        if not pd.StringDtype().is_dtype(self.df[name_feat]):
             logger.info('Discrete feature')
             sns.distplot(self.df[name_feat])
             plt.show()
             sns.boxplot(self.df[name_feat])
             plt.show()
             if not (self.df[name_feat].hasnans) and\
-                    not (self.df[name_feat].dtype == pd.BooleanDtype()):
+                    not (pd.BooleanDtype().is_dtype(self.df[name_feat])):
                 logger.info('Hasn\'t nulls values')
                 sm.qqplot(self.df[name_feat], fit=True, line="45")
                 plt.show()
-        if name_target:
+
+        if name_target or (y is not None):
             logger.info('With target feature')
-            sns.lineplot(self.df[name_feat], self.df[name_target])
+            if name_target:
+                y = self.df[name_target]
+            sns.lineplot(self.df[name_feat], y)
             plt.show()
-            sns.scatterplot(self.df[name_feat], self.df[name_target])
+            sns.scatterplot(self.df[name_feat], y)
             plt.show()
 
     def features_corralations(self):

@@ -168,6 +168,7 @@ class Preprocessing:
 
         model = DecisionTreeRegressor() if self.rfe == 'DT' else LinearRegression()
 
+        logger.info(f"Numero de componentes selecionados é {n_components}")
         selection = RFE(model, n_features_to_select=n_components)
         selection.fit(df[feat_num+feat_cat], y=y)
         feat_selected = df[feat_num +
@@ -198,15 +199,17 @@ class Preprocessing:
         y = df[self.get_name_target()].fillna(0).astype(float)
         df = df.drop(columns={self.get_name_target()})
 
+        if self.rfe:
+            logger.info('Select features')
+            df_temp = df.copy()
+            df_temp[feat_num] = IterativeImputer().fit_transform(df_temp[feat_num])
+            self._select_features(df_temp, y, feat_num, feat_cat)
+            logger.info(f'Numeric Feature Selected >>>> {feat_num}')
+            logger.info(f'Categoric Feature Selected >>>> {feat_cat}')
+
         logger.info('Imputation numeric values iteratively')
         self.imputer = IterativeImputer()
         df[feat_num] = self.imputer.fit_transform(df[feat_num])
-
-        if self.rfe:
-            logger.info('Select features')
-            self._select_features(df.copy(), y, feat_num, feat_cat)
-            logger.info(f'Numeric Feature Selected >>>> {feat_num}')
-            logger.info(f'Categoric Feature Selected >>>> {feat_cat}')
 
         logger.info('Feature fit and transform in train dataframe')
         self.scaler = StandardScaler()

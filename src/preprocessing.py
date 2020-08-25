@@ -1,5 +1,7 @@
 import pandas as pd
 import category_encoders as ce
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
 from loguru import logger
 from sklearn.decomposition import PCA
 from sklearn.tree import DecisionTreeRegressor
@@ -14,6 +16,7 @@ class Preprocessing:
         self.features_numeric = None
         self.scaler = None
         self.catb = None
+        self.imputer = None
         self.data = data
         self.rfe = rfe
         self.pca = pca
@@ -83,13 +86,16 @@ class Preprocessing:
             else:
                 df.drop(columns=col[name], inplace=True)
                 print(f'drop: {col[name]}')
+
+        logger.info(f'Numeric Feature >>>> {features_numeric}')
+        logger.info(f'Categoric Feature >>>> {features_categoric}')
         return df, features_numeric, features_categoric
 
     def _preprocess_auto(self, df):
         '''
         Automatically preprocess dataframe setting categoric and numeric features
         :param df: Dataframe
-        :return: List[String] with numeric features, List[String] with categoric features
+        :return: Dataframe processed, List[String] with numeric features, List[String] with categoric features
         '''
 
         features_categoric = df.select_dtypes(
@@ -127,12 +133,16 @@ class Preprocessing:
             else:
                 features_numeric.remove(x)
 
+        df = df[features_numeric+features_categoric]
+
         if self.data.name_target in features_numeric:
             features_numeric.remove(self.data.name_target)
         if self.data.name_target in features_categoric:
             features_categoric.remove(self.data.name_target)
 
-        return features_numeric, features_categoric
+        logger.info(f'Numeric Feature >>>> {features_numeric}')
+        logger.info(f'Categoric Feature >>>> {features_categoric}')
+        return df, features_numeric, features_categoric
 
     def _select_features(self, df, y, feat_num, feat_cat):
         '''
@@ -188,6 +198,10 @@ class Preprocessing:
         y = df[self.get_name_target()].fillna(0).astype(float)
         df = df.drop(columns={self.get_name_target()})
 
+        logger.info('Imputation numeric values iteratively')
+        self.imputer = IterativeImputer()
+        df[feat_num] = self.imputer.fit_transform(df[feat_num])
+
         if self.rfe:
             logger.info('Select features')
             self._select_features(df.copy(), y, feat_num, feat_cat)
@@ -212,7 +226,12 @@ class Preprocessing:
         :param df: Dataframe
         :return: Transformed dataframe
         '''
-        print('Feature Transform in test dataframe')
+
+        logger.info('Imputation numeric values iteratively')
+        df[self.features_numeric] = self.imputer.transform(
+            df[self.features_numeric])
+
+        logger.info('Feature Transform in test dataframe')
         df[self.features_numeric] = self.scaler.transform(
             df[self.features_numeric])
         df[self.features_categoric] = self.catb.transform(
@@ -233,13 +252,9 @@ class Preprocessing:
         if self.manual_feat:
             df, feat_num, feat_cat = self._preprocess_manual(df)
         else:
-            feat_num, feat_cat = self._preprocess_auto(df)
+            df, feat_num, feat_cat = self._preprocess_auto(df)
 
         if is_train_stage:
-            logger.info(f'Numeric Feature >>>> {feat_num}')
-            logger.info(f'Categoric Feature >>>> {feat_cat}')
             return self._process_train(df, feat_num, feat_cat)
         else:
-            logger.info(f'Numeric Feature >>>> {self.features_numeric}')
-            logger.info(f'Categoric Feature >>>> {self.features_categoric}')
             return self._process_test(df)

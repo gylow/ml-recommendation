@@ -132,7 +132,8 @@ dmypy.json
 .DS_Store
 Ml_recommendation.code-workspace
 
-# csv and pdf files
+# csv, outputs and pdf files
 *.csv
 *.pdf
 src/catboost_info/
+out/

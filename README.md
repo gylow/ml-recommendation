@@ -41,3 +41,26 @@ As bases de portfólio poderão ser utilizadas para testar a aderência da solu�
    - A análise deve considerar os seguintes pontos: análise exploratória dos dados, tratamento dos dados, avaliação de algoritmos, treinamento do modelo, avaliação de performance do modelo e visualização dos resultados;
    - Para a apresentação do projeto, o tempo entre o treinamento do modelo e o output deve ser menor que 20 min.
 
+## TO DO:
+
+- [x] verificar porque o catboost não está funcionando para as versões do Pandas acima da 1.0.4
+- [x] implementar preenchimento parametrizado de nulls
+- [ ] implementar novos algoritmos
+- [ ] implementar balanceamento 
+- [ ] adicionar o dataframe à uma variável da classe DataSource
+- [x] gerar logs com o loguru na classe Preprocessing
+- [ ] visualizar classificação de dados utilizando pca (aula 9)
+- [x] implementar métrica
+- [ ] implementar métricas para hiperparâmetros
+- [ ] implementar técnicas de performance dos algorítimos 
+- [ ] implementar matriz da confusão
+- [ ] incorporar analise dos dados de teste e treino à classe DataSource
+- [ ] implementar análise visual automática de features com a classe de visualização 
+- [x] integrar classe de experimentos
+- [x] incorporar classe de visualização para a análise dos dados ao projeto
+- [x] gerar logs com o loguru na classe DataSource
+- [x] gerar logs com o loguru na classe Visualization
+- [x] gerar logs com o loguru na classe Experiments
+- [ ] gerar logs com o loguru na classe Metrics
+- [x] gerar logs com o loguru na classe Model_Training
+- [x] gerar logs com o loguru na classe Model_Inference

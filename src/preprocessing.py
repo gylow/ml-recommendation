@@ -250,12 +250,16 @@ class Preprocessing:
         '''
         if not self.get_name_target:
             logger.error('Target name not defined')
-        df = self.data.read_data(is_train_stage)
 
         if self.manual_feat:
+            df = self.data.read_data(is_train_stage)
             df, feat_num, feat_cat = self._preprocess_manual(df)
         elif is_train_stage:
+            df = self.data.read_data(is_train_stage)
             df, feat_num, feat_cat = self._preprocess_auto(df)
+        else:
+            df = self.data.read_data(is_train_stage, self.get_name_features())
+
 
         if is_train_stage:
             return self._process_train(df, feat_num, feat_cat)

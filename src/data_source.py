@@ -97,16 +97,18 @@ class DataSource:
             logger.error('Test and train columns are totally differents')
         logger.info(df_train.info())
 
-    def read_data(self, is_train_stage=True, original=False):
+    def read_data(self, is_train_stage=True, original=False, usecols=None):
         '''
             Read data from data sources
-            :param etapa_treino: Boolean specifing if is train or test.
-            :param original: Boolean specifing if read original data frame or with removed rows 
+            :param is_train_stage: Boolean specifing if is train or test.
+            :param original: Boolean specifing if read original data frame or with removed rows
+            :param usecols: List of name coluns to read 
             :return: pd.DataFrame with values and pd.Series with labels
         '''
         df = pd.read_csv(
-            self.path_train if is_train_stage else self.path_test,
-            index_col=self.name_id).convert_dtypes()
+            self.path_train if is_train_stage else self.path_test
+            , usecols=usecols
+            , index_col=self.name_id).convert_dtypes()
 
         # The removed data can be recovered by the get_removed_rows()
         if self.rows_remove and not original:
@@ -123,6 +125,7 @@ class DataSource:
         '''
             Read especifics columns from data sources
             :param name_columns: List with columns names
+            :param is_train_stage: Boolean specifing if is train or test.
             :return: pd.DataFrame with especificated columns
         '''
 
@@ -134,13 +137,10 @@ class DataSource:
 
         return df if name_columns is None else df[name_columns]
 
-    def get_columns(self, name_columns=None, is_train_stage=True):
+    def get_index(self, is_train_stage=True):
         '''
-            Read especifics columns from data sources
-            :param name_columns: List with columns names
-            :return: pd.DataFrame with especificated columns
+            Read index from data source
+            :param is_train_stage: Boolean specifing if is train or test.
+            :return: pd.Index 
         '''
-        if name_columns:
-            return self.read_data(is_train_stage)[name_columns]
-        else:
-            return self.read_data(is_train_stage).index
+        return self.read_data(is_train_stage, original=True, usecols=[0,1]).index

@@ -254,7 +254,7 @@ class Preprocessing:
 
         if self.manual_feat:
             df, feat_num, feat_cat = self._preprocess_manual(df)
-        else:
+        elif is_train_stage:
             df, feat_num, feat_cat = self._preprocess_auto(df)
 
         if is_train_stage:

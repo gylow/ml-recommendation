@@ -33,7 +33,8 @@ class DataSource:
         self.outliers_remove = outliers_remove
         self.name_id = name_id
         self.name_target = name_target
-        # TODO self.data = None
+        self.is_train_df = True
+        self.data = None
         # TODO definir um seed padrão
 
     def set_df_train(self, path_original):
@@ -44,26 +45,39 @@ class DataSource:
         df_train = pd.read_csv(path_original, index_col=self.name_id)
         logger.success('Dataframe read')
 
+        logger.info("Setting Train DataFrame")
+        self.data = df_train
+        self.is_train_df = True
+
         df_train.to_csv(self.path_train)
         logger.success('Writing train dataframe')
+
         logger.info(df_train.info(verbose=True))
 
     def set_target_by_index(self, serie_index):
         '''
-        Set and write target column into train dataframe
+        Set and write target column into train dataframe and make test dataframe without target column
         :param serie_index: Array like with index to classify
         '''
         if not self.name_target:
             self.name_target = 'target'
-        logger.info('Reading train dataframe')
-        df_train = self.read_data()
+
+        if (self.data is None) or (not self.is_train_df):
+            logger.info('Reading train dataframe')
+            self.data = self.read_data()
+            self.is_train_df = True
+        else:
+            logger.info(f"Train dataframe was already read")
+
         logger.info('Setting target column')
-        df_train[self.name_target] = [
-            1 if x in serie_index.to_numpy() else 0 for x in df_train.index]
+        self.data[self.name_target] = [
+            1 if x in serie_index.to_numpy() else 0 for x in self.data.index]
+
         logger.info('Writing train dataframe with target column')
-        df_train.to_csv(self.path_train)
+        self.data.to_csv(self.path_train)
+
         logger.info('Writing teste dataframe without index rows')
-        df_train.drop(index=serie_index, columns=self.name_target).to_csv(
+        self.data.drop(index=serie_index, columns=self.name_target).to_csv(
             self.path_test)
         logger.success('Dataframes was written')
 
@@ -71,31 +85,37 @@ class DataSource:
         '''
         Set train dataframe columns equal from test dataframe
         '''
-        df_train = pd.read_csv(self.path_train, index_col=self.name_id)
+        if (self.data is None) or (not self.is_train_df):
+            logger.info('Reading train dataframe')
+            self.data = pd.read_csv(self.path_train, index_col=self.name_id)
+            self.is_train_df = True
+        else:
+            logger.info(f"Train dataframe was already read")
+
         df_test = pd.read_csv(self.path_test, index_col=self.name_id)
         logger.success('Dataframes read')
         logger.info(
-            f'Train shape: {df_train.shape} Test shape: {df_test.shape}')
+            f'Train shape: {self.data.shape} Test shape: {df_test.shape}')
 
-        if self.name_target not in df_train.columns:
+        if self.name_target not in self.data.columns:
             logger.error('Train dataframe does not have target column')
 
-        elif df_test.columns.size >= (df_train.drop(columns=self.name_target).columns.size)\
-                and all(elem in df_test for elem in df_train.drop(columns=self.name_target).columns):
+        elif df_test.columns.size >= (self.data.drop(columns=self.name_target).columns.size)\
+                and all(elem in df_test for elem in self.data.drop(columns=self.name_target).columns):
             logger.success('Test and train dataframes are ok')
 
-        elif all(df_train[df_test.columns].columns == df_test.columns):
+        elif all(self.data[df_test.columns].columns == df_test.columns):
             logger.info(
                 'Formating train dataframe columns equal test + target')
-            df_train = pd.concat(
-                [df_train[df_test.columns], df_train[self.name_target]], axis=1)
+            self.data = pd.concat(
+                [self.data[df_test.columns], self.data[self.name_target]], axis=1)
             logger.info('Writing formated train dataframe')
-            df_train.to_csv('../data/train.csv',
-                            index=(True if self.name_id else False))
+            self.data.to_csv('../data/train.csv',
+                             index=(True if self.name_id else False))
             logger.success('Saved')
         else:
             logger.error('Test and train columns are totally differents')
-        logger.info(df_train.info())
+        logger.info(self.data.info())
 
     def read_data(self, is_train_stage=True, original=False, usecols=None):
         '''
@@ -105,21 +125,27 @@ class DataSource:
             :param usecols: List of name coluns to read 
             :return: pd.DataFrame with values and pd.Series with labels
         '''
-        df = pd.read_csv(
-            self.path_train if is_train_stage else self.path_test
-            , usecols=usecols
-            , index_col=self.name_id).convert_dtypes()
+
+        if (self.data is None) or (self.is_train_df != is_train_stage) or (original):
+            logger.info(
+                f"Reading {'train' if is_train_stage else 'test'} dataframe")
+            self.data = pd.read_csv(
+                self.path_train if is_train_stage else self.path_test, usecols=usecols, index_col=self.name_id).convert_dtypes()
+            self.is_train_df = is_train_stage
+        else:
+            logger.info(
+                f"{'Train' if is_train_stage else 'Test'} dataframe was already read")
 
         # The removed data can be recovered by the get_removed_rows()
         if self.rows_remove and not original:
             for label, x in self.rows_remove:
-                df = df[df[label] != x]
+                self.data = self.data[self.data[label] != x]
 
         if is_train_stage and self.outliers_remove:
             for label, x in self.outliers_remove:
-                df = df[df[label] != x]
+                self.data = self.data[self.data[label] != x]
 
-        return df
+        return self.data
 
     def get_removed_rows(self, name_columns=None, is_train_stage=True):
         '''
@@ -143,4 +169,4 @@ class DataSource:
             :param is_train_stage: Boolean specifing if is train or test.
             :return: pd.Index 
         '''
-        return self.read_data(is_train_stage, original=True, usecols=[0,1]).index
+        return self.read_data(is_train_stage, original=True, usecols=[0, 1]).index

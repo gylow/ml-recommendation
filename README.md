@@ -47,7 +47,7 @@ As bases de portfólio poderão ser utilizadas para testar a aderência da solu�
 - [x] implementar preenchimento parametrizado de nulls
 - [ ] implementar novos algoritmos
 - [ ] implementar balanceamento 
-- [ ] adicionar o dataframe à uma variável da classe DataSource
+- [x] adicionar o dataframe à uma variável da classe DataSource
 - [x] gerar logs com o loguru na classe Preprocessing
 - [ ] visualizar classificação de dados utilizando pca (aula 9)
 - [x] implementar métrica

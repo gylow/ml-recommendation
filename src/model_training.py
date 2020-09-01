@@ -1,7 +1,5 @@
 import pandas as pd
 import numpy as np
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
 from experiments import Experiments
 from joblib import dump, load
 from loguru import logger
@@ -33,6 +31,7 @@ class ModelTraining:
         logger.info("Training Model")
         exp = Experiments(regression=self.regression)
         df_metrics = exp.run_experiment(df_train, y, seed=self.seed)
+        
         logger.info(f"Metrics: \n{df_metrics}")
         df_metrics.to_csv("../out/metrics.csv")
 

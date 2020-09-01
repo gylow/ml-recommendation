@@ -9,7 +9,6 @@ class DataSource:
                  name_target=None,
                  rows_remove=None,
                  outliers_remove=None,
-                 name_csv_label='label',
                  name_csv_train='train',
                  name_csv_test='test',
                  name_csv_predict='predict'):
@@ -19,7 +18,6 @@ class DataSource:
         :param name_target: String with target column name in train dataframe.
         :param rows_remove: List of tuple(label, value_corresp) with the rows condictions to remove from Train data frame
         :param outliers_remove: List of tuple(label, value_corresp) with the rows condictions to remove from Train data frame
-        :param name_csv_label: String with test target archive name without ".csv".
         :param name_csv_train: String with train archive name without ".csv".
         :param name_csv_test: String with test archive name without ".csv".
         :param name_csv_predict: String with predict archive name without ".csv".
@@ -27,32 +25,33 @@ class DataSource:
         '''
         self.path_train = f'../data/{name_csv_train}.csv'
         self.path_test = f'../data/{name_csv_test}.csv'
-        self.path_label = f'../data/{name_csv_label}.csv'
         self.path_predict = f'../data/{name_csv_predict}.csv'
         self.rows_remove = rows_remove
         self.outliers_remove = outliers_remove
         self.name_id = name_id
         self.name_target = name_target
         self.is_train_df = True
+        self.is_original_df = True
         self.data = None
         # TODO definir um seed padrão
 
-    def set_df_train(self, path_original):
+    def set_df_train(self, path_original, write=True):
         '''
         Set train dataframe to work
         :param path_original: String with path from original file to train dataframe
+        :param write: Bool if shoud write a file with train dataframe
         '''
-        df_train = pd.read_csv(path_original, index_col=self.name_id)
+        logger.info("Setting Train DataFrame")
+        self.data = pd.read_csv(path_original, index_col=self.name_id)
+        self.is_original_df = True
+        self.is_train_df = True
         logger.success('Dataframe read')
 
-        logger.info("Setting Train DataFrame")
-        self.data = df_train
-        self.is_train_df = True
+        if write:
+            self.data.to_csv(self.path_train)
+            logger.success('Write train dataframe')
 
-        df_train.to_csv(self.path_train)
-        logger.success('Writing train dataframe')
-
-        logger.info(df_train.info(verbose=True))
+        logger.info(self.data.info(verbose=True))
 
     def set_target_by_index(self, serie_index):
         '''
@@ -62,16 +61,13 @@ class DataSource:
         if not self.name_target:
             self.name_target = 'target'
 
-        if (self.data is None) or (not self.is_train_df):
-            logger.info('Reading train dataframe')
-            self.data = self.read_data()
-            self.is_train_df = True
-        else:
-            logger.info(f"Train dataframe was already read")
-
+        self.read_data(original=True)
+        
         logger.info('Setting target column')
         self.data[self.name_target] = [
             1 if x in serie_index.to_numpy() else 0 for x in self.data.index]
+
+        self.is_original_df = False
 
         logger.info('Writing train dataframe with target column')
         self.data.to_csv(self.path_train)
@@ -85,15 +81,10 @@ class DataSource:
         '''
         Set train dataframe columns equal from test dataframe
         '''
-        if (self.data is None) or (not self.is_train_df):
-            logger.info('Reading train dataframe')
-            self.data = pd.read_csv(self.path_train, index_col=self.name_id)
-            self.is_train_df = True
-        else:
-            logger.info(f"Train dataframe was already read")
+        self.read_data()
 
         df_test = pd.read_csv(self.path_test, index_col=self.name_id)
-        logger.success('Dataframes read')
+        logger.success('Test dataframe read')
         logger.info(
             f'Train shape: {self.data.shape} Test shape: {df_test.shape}')
 
@@ -126,12 +117,14 @@ class DataSource:
             :return: pd.DataFrame with values and pd.Series with labels
         '''
 
-        if (self.data is None) or (self.is_train_df != is_train_stage) or (original):
+        if (self.data is None) or (self.is_train_df != is_train_stage) or (original and (self.is_original_df != original)):
             logger.info(
                 f"Reading {'train' if is_train_stage else 'test'} dataframe")
             self.data = pd.read_csv(
                 self.path_train if is_train_stage else self.path_test, usecols=usecols, index_col=self.name_id).convert_dtypes()
             self.is_train_df = is_train_stage
+            self.is_original_df = True if usecols is None else False
+            logger.success('Dataframe read')
         else:
             logger.info(
                 f"{'Train' if is_train_stage else 'Test'} dataframe was already read")
@@ -140,10 +133,12 @@ class DataSource:
         if self.rows_remove and not original:
             for label, x in self.rows_remove:
                 self.data = self.data[self.data[label] != x]
+            self.is_original_df = original
 
-        if is_train_stage and self.outliers_remove:
+        if is_train_stage and self.outliers_remove and not original:
             for label, x in self.outliers_remove:
                 self.data = self.data[self.data[label] != x]
+            self.is_original_df = original
 
         return self.data
 

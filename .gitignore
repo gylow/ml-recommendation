@@ -130,7 +130,7 @@ dmypy.json
 
 # ML project
 .DS_Store
-Ml_recommendation.code-workspace
+*.code-workspace
 
 # csv, outputs and pdf files
 *.csv
